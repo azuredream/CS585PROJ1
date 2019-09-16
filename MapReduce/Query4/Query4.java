@@ -16,11 +16,13 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import java.net.URI;
+
+
 public class Query4{
 
 	public static class CountryMapper extends Mapper<Object, Text, Text, FloatWritable>{
 		
-		private HashMap<Integer, Integer> ID_Country_Map = new HashMap<Integer,Integer>();
+		private HashMap<Integer, Integer> country_to_Id = new HashMap<Integer,Integer>();
 
 	    public void setup(Context context) throws IOException{
 	    	String[] tokens;
@@ -33,7 +35,7 @@ public class Query4{
 	    		tokens = line.split(",");
 	            int key = Integer.parseInt(tokens[0]);
 	            int countrycode = Integer.parseInt(tokens[4]);
-	            ID_Country_Map.put(key, countrycode);
+	            country_to_Id.put(key, countrycode);
 	    		line = br.readLine();
 	    	}
 	    }
@@ -43,7 +45,7 @@ public class Query4{
 			Text Countrycode = new Text();
 			FloatWritable TransTotal = new FloatWritable();
 			int joinID = Integer.parseInt(tokens[1]);
-			Countrycode.set(ID_Country_Map.get(joinID)+"");
+			Countrycode.set(country_to_Id.get(joinID)+"");
 			TransTotal.set(Float.parseFloat(tokens[2]));
 	        context.write(Countrycode, TransTotal);
 	    }
@@ -51,7 +53,6 @@ public class Query4{
 
 	public static class FilterRecuder extends Reducer<Text, FloatWritable, Text, Text>{
 	    public void reduce(Text key, Iterable<FloatWritable> values, Context context) throws IOException, InterruptedException{
-	    	StringBuilder output = new StringBuilder();
 	    	int counter = 0;
 	        float max = Integer.MIN_VALUE;
 	        float min = Integer.MAX_VALUE;
@@ -63,17 +64,14 @@ public class Query4{
 	            if (tmpval < min) min = tmpval;
 	            		
 	        }
-	        output.append(counter + ",");
-	        output.append(min +",");
-	        output.append(max + "");
-	        context.write(key, new Text(output.toString()));
+	        context.write(key, new Text(String.format("%d,%f,%f",counter,min,max)));
 	    }
 	}
 	
 	
 	public static void main(String[] args) throws Exception{
-		// TODO Auto-generated method stub
-		long start = new Date().getTime();
+
+        long start = new Date().getTime();
 	    Configuration conf = new Configuration();
 	    conf.set("mapred.jop.tracker", "hdfs://localhost:8020");
 	    conf.set("fs.default.name", "hdfs://localhost:8020");
@@ -88,12 +86,11 @@ public class Query4{
 	    job.setReducerClass(FilterRecuder.class);                        
 	    job.setOutputKeyClass(Text.class);
 	    job.setOutputValueClass(Text.class);
-	    job.setNumReduceTasks(4);
 	    FileInputFormat.addInputPath(job, new Path(args[0]));
 	    FileOutputFormat.setOutputPath(job, new Path(args[1]));
 	    job.waitForCompletion(true);
 		long end = new Date().getTime();
-		System.out.println("Job took "+(end-start) + "milliseconds");  
+		System.out.println(String.format("Job executed in %d seconds", (end - start) / 1000));  
 	}
 
 }
