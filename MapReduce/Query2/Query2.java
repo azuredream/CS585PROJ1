@@ -1,4 +1,3 @@
-package q2;
 import java.io.*;
 import java.util.Date;
 import java.util.HashMap;
@@ -17,8 +16,50 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import java.net.URI;
+
 public class Query2 {
-    public static class qMapper extends Mapper<Object, Text, Text, Text> {
+
+    public static class TransInfoWritable implements Writable {
+        private IntWritable count;
+        private FloatWritable sum;
+
+        public TransInfoWritable() {
+            count = new IntWritable();
+            sum = new FloatWritable();
+        }
+
+        public TransInfoWritable(int count, float sum) {
+            this.count = new IntWritable(count);
+            this.sum = new FloatWritable(sum);
+        }
+
+        public int getFloat1() {
+            return count.get();
+        }
+
+        public Float getFloat2() {
+            return sum.get();
+        }
+
+        @Override
+        public String toString() {
+            return count.toString() + " " + sum.toString();
+        }
+
+        @Override
+        public void readFields(DataInput in) throws IOException {
+            count.readFields(in);
+            sum.readFields(in);
+        }
+
+        @Override
+        public void write(DataOutput out) throws IOException {
+            count.write(out);
+            sum.write(out);
+        }
+    }
+
+    public static class qMapper extends Mapper<Object, Text, Text, TransInfoWritable> {
 
         private HashMap<Integer, String> Id_to_Name = new HashMap<Integer, String>();
 
@@ -31,7 +72,7 @@ public class Query2 {
             while (line != null) {
                 tokens = line.split(",");
                 int key = Integer.parseInt(tokens[0]);
-                Id_to_Name.put(key, String.format("%s",tokens[1]));
+                Id_to_Name.put(key, String.format("%s", tokens[1]));
                 line = br.readLine();
             }
         }
@@ -41,28 +82,29 @@ public class Query2 {
             int custID = Integer.parseInt(tokens[1]);
             Text customerMapKey = new Text();
             customerMapKey.set(String.format("%d,%s", custID, Id_to_Name.get(custID)));
-            Text c_t=new Text();
-            c_t.set(String.format("%d,%f", 1, Float.parseFloat(tokens[2])));
-            context.write(customerMapKey, c_t);
+
+            TransInfoWritable output = new TransInfoWritable(1, Float.parseFloat(tokens[2]));
+
+            context.write(customerMapKey, output);
         }
     }
-    public static class qReducer extends Reducer<Text, Text, Text, Text> {
-        public void reduce(Text key, Iterable<Text> values, Context context)
-                throws IOException, InterruptedException {
-        	String[] tokens = key.toString().split(",");
-            float sum = 0;
-            int count=0;
 
-            for (Text f : values) {
-            	String[] tkofval = key.toString().split(",");
-            	int tcount=Integer.parseInt(tkofval[0]);
-                float transtotal = Float.parseFloat(tkofval[1]);
-                sum+=transtotal;
-                count+=tcount;
+    public static class qReducer extends Reducer<Text, TransInfoWritable, Text, TransInfoWritable> {
+        public void reduce(Text key, Iterable<TransInfoWritable> values, Context context)
+                throws IOException, InterruptedException {
+            String[] tokens = key.toString().split(",");
+            float sum = 0;
+            int count = 0;
+
+            for (TransInfoWritable f : values) {
+                float tcount = f.getFloat1();
+                float transtotal = f.getFloat2();
+                sum += transtotal;
+                count += tcount;
             }
-            Text c_t=new Text();
-            c_t.set(String.format("%d,%f", count,sum));        
-            context.write(key,c_t);
+            TransInfoWritable output = new TransInfoWritable(count, sum);
+
+            context.write(key, output);
         }
     }
 
@@ -72,18 +114,20 @@ public class Query2 {
         Configuration conf = new Configuration();
         conf.set("mapred.jop.tracker", "hdfs://localhost:8020");
         conf.set("fs.default.name", "hdfs://localhost:8020");
-        DistributedCache.addCacheFile(new URI("hdfs://localhost:8020/user/hadoop/input/Customers"), conf);
+        DistributedCache.addCacheFile(new URI("hdfs://localhost:8020/user/hadoop/data/Customers"), conf);
         Job job = new Job(conf, "Query2");
 
         job.setJarByClass(Query2.class);
 
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(Text.class);
+        job.setMapOutputValueClass(TransInfoWritable.class);
         job.setMapperClass(qMapper.class);
+
         job.setCombinerClass(qReducer.class);
+        
         job.setReducerClass(qReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(TransInfoWritable.class);
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
