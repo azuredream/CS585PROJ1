@@ -1,9 +1,5 @@
-package cs585;
-
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +22,7 @@ class Customer
   };
  
 
-public class datagenor {
+public class DataGenerator {
 	public static int CUSTOMERNUMER=50000;
 	public static int NAMELENBOT=10;
 	public static int NAMELENUPP=20;
@@ -74,21 +70,15 @@ public class datagenor {
 			transdata.add(t);
 		}
 			Boolean flag=true;
-	        // file path
-	        String custfilepath = "/Users/zixuan/Desktop/Customers";
-	        String transfilepath="/Users/zixuan//Desktop/Transactions";
 	        
 	        
-//
-//	        // write
 	        try {
-	            // new file
-	            File custfile = new File(custfilepath);
-	            File transfile=new File(transfilepath);
+	            File custfile = new File(args[0]);
+	            File transfile=new File(args[1]);
 	            
 	            
 	            
-	            if (custfile.exists()) { // del file if exist
+	            if (custfile.exists()) { 
 	            	custfile.delete();
 	            }
 	            if (transfile.exists()) { // del file if exist
