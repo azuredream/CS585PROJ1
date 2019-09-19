@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 class Customer
@@ -29,7 +30,7 @@ public class DataGenerator {
 	public static String chardic="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
 	public static int AGEBOT=10;
 	public static int AGEUPP=70;
-	public static List<String> GENDER=List.of("male","female");
+	public static List<String> GENDER=Arrays.asList("male","female");
 	public static int COUNTRYCODERANGE=10;
 	public static float SALARYBOT=100;
 	public static float SALARYUPP=10000;
